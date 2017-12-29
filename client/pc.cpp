@@ -22,11 +22,33 @@ void error(const char *msg)
 }
 
 
-char* lower(char* word){
+char* lower(char* word)
+{
     unsigned int i;
     for(i = 0; i < strlen(word); i++ )
         word[i] = tolower(word[i]);
     return word;
+}
+
+
+int receive(int socket_fd, char* buffer, int buffer_size)
+{
+    bzero(buffer, buffer_size);
+    int n = read(socket_fd, buffer, buffer_size-1); 
+    if( n < 0 )
+        error("ERROR reading from socket");
+    return n;
+}
+
+
+int send_command(int socket_fd, char* buffer, int buffer_size) 
+{
+    bzero( buffer, buffer_size );
+    fgets( buffer, buffer_size-1, stdin );
+    int n = write( socket_fd, buffer, strlen(buffer));
+    if( n < 0 )
+        error("ERROR writing to socket");
+    return n;
 }
 
 
@@ -80,21 +102,39 @@ int main(int argc, char *argv[])
     printf("%s\n",buffer_in);
 
     // Write a command
+    /*
     printf("Enter command: ");
     bzero(buffer_out, SIZE_BUFF_OUT);
     fgets(buffer_out, SIZE_BUFF_OUT-1, stdin);
     n_out = write(sockfd, buffer_out, strlen(buffer_out));
     if( n_out < 0 )
         error("ERROR writing to socket");
-
+    */
     
     while( strncmp(lower(buffer_out), "stop", 4) != 0 ) {
-        printf("Enter command: ");
+        // Receive query from server
+        receive(sockfd, buffer_in, SIZE_BUFF_IN);
+        printf("%s", buffer_in);
+        /*
+        bzero(buffer_in, SIZE_BUFF_IN);
+        n_in = read(sockfd, buffer_in, SIZE_BUFF_IN-1);
+        if( n_in < 0 ) error("ERROR reading from socket");
+        */
+
+        send_command(sockfd, buffer_out, SIZE_BUFF_OUT);
+        /*
+        // Get command 
         bzero(buffer_out, SIZE_BUFF_OUT);
         fgets(buffer_out, SIZE_BUFF_OUT-1, stdin);
+
+        // Send command
         n_out = write(sockfd, buffer_out, strlen(buffer_out));
         if( n_out < 0 )
             error("ERROR writing to socket");
+        */
+        // Receive response from server
+        receive(sockfd, buffer_in, SIZE_BUFF_IN);
+        printf("%s", buffer_in);
     }
 
     // Closing remarks
