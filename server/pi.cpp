@@ -26,6 +26,27 @@ char* lower(char* word){
     return word;
 }
 
+
+int receive_command(int socket_fd, char* buffer, int buffer_size)
+{
+    bzero( buffer, buffer_size );
+    int n = read( socket_fd, buffer, buffer_size-1 );
+    if( n < 0 )
+        error("ERROR reading from socket");
+    return n;
+}
+
+
+int send(int socket_fd, char* buffer, int buffer_size)
+{
+    int n = write( socket_fd, buffer, buffer_size );
+    if( n < 0 )
+        error("ERROR writing to socket");
+    //bzero( buffer, buffer_size );
+    return n;
+}
+
+
 int main(int argc, char *argv[])
 {
     // File descriptors and port number 
@@ -43,7 +64,7 @@ int main(int argc, char *argv[])
     // Number of characters written
     int n_in, n_out;
 
-    char client_query_message[] = "Please issue one of the following commands:\nphoto\nvideo\nstop\n";
+    char client_query_message[] = "\n---------------\nLegal commands:\nphoto\nvideo\nstop\n>>> ";
     int cqm_length = strlen(client_query_message);
     char connection_message[] = "Connection established";
     int conmsg_length = sizeof(connection_message) / sizeof(char);
@@ -94,41 +115,55 @@ int main(int argc, char *argv[])
     if (n_out < 0) error("ERROR writing to socket");
 
     // Receive input command
+    /*
     printf("Waiting for command...\n");
     bzero(buffer_in, SIZE_BUFF_IN);
     n_in = read(newsockfd, buffer_in, SIZE_BUFF_IN-1);
     if(n_in < 0)
         error("ERROR reading from socket");
     printf("Command received: %s", lower(buffer_in));
-   
+    */
     while( strncmp(lower(buffer_in), "stop", 4) != 0) {
-        
+        // Client query message  
+        send(newsockfd, client_query_message, cqm_length);
+        /*
         n_out = write(newsockfd, client_query_message, cqm_length);
         if (n_out < 0) error("ERROR writing to socket");
-
-
+        */
+        // Zero buffer and get command
+        receive_command(newsockfd, buffer_in, SIZE_BUFF_IN);
+        /*
         bzero(buffer_in, SIZE_BUFF_IN);
         n_in = read(newsockfd, buffer_in, SIZE_BUFF_IN-1);
         if(n_in < 0)
             error("ERROR reading from socket");
-        printf("Command received: %s", lower(buffer_in));
+        */
+        
+        strcpy( buffer_in, lower(buffer_in));
+        printf("Command received: %s", buffer_in);
         
         // Update buffer with lowered command
-        strcpy( buffer_in, lower(buffer_in));
-        if( strcmp(buffer_in, "photo") == 0 ){
+        // TODO does not enter if statements for some reason
+        //printf(buffer_in);
+        if( strncmp(buffer_in, "photo", 5) == 0 ) {
             // Take a photo, ship it to the PC
-        }
-        else if( strcmp(buffer_in, "video") == 0 ){
+            send(newsockfd, "Command: photo\n", 15);
+            printf("Command accepted\n");
+        } else if( strncmp(buffer_in, "video", 5) == 0 ) {
             // Query the client for how long of a video, ship it
-        }
-        else if( strcmp(buffer_in, "stop") == 0){
-            n_out = write(newsockfd, "Stopping", 8);
-            if( n_out < 0) error("ERROR writing to socket"); 
-        }
-        else{
+            send(newsockfd, "Command: video\n", 15); 
+            printf("Command accepted\n");
+        } else if( strncmp(buffer_in, "stop", 4) == 0) {
+            send(newsockfd, "\nStopping\n", 9);
+            printf("Stopping\n");
+        } else {
             // Ask again
-            n_out = write(newsockfd, "Command not understood", 22);
+            send(newsockfd, "Command not understood\n", 23);
+            printf("Command not accepted: %s", buffer_in);
+            /*
+            n_out = write(newsockfd, "Command not understood\n", 23);
             if( n_out < 0) error("ERROR writing to socket"); 
+            */
         }             
             
     }
